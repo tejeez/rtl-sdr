@@ -351,6 +351,10 @@ static void *command_worker(void *arg)
 			printf("set tuner gain by index %u\n", ntohl(cmd.param));
 			set_gain_by_index(dev, ntohl(cmd.param));
 			break;
+		case 0x0e:
+			printf("set bias tee %d\n", ntohl(cmd.param));
+			rtlsdr_set_bias_tee(dev, (int)ntohl(cmd.param));
+			break;
 		default:
 			break;
 		}
