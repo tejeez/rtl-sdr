@@ -354,7 +354,7 @@ static rtlsdr_dongle_t known_devices[] = {
 
 #define DEFAULT_BUF_NUMBER	32
 #define DEFAULT_ISO_PACKETS	8
-#define DEFAULT_BUF_LENGTH	(3072 * DEFAULT_ISO_PACKETS)
+#define DEFAULT_BUF_LENGTH	(1024 * DEFAULT_ISO_PACKETS)
 
 #define DEF_RTL_XTAL_FREQ	28800000
 #define MIN_RTL_XTAL_FREQ	(DEF_RTL_XTAL_FREQ - 1000)
@@ -1980,23 +1980,26 @@ static void LIBUSB_CALL _libusb_callback(struct libusb_transfer *xfer)
 	int i, len, total_len = 0;
 	static unsigned char* iso_packet_buf;
 	rtlsdr_dev_t *dev = (rtlsdr_dev_t *)xfer->user_data;
-//	int16_t outsamples[768 * 3 * 8];
-	printf("callback!\n");
+	int16_t outsamples[768 * 3 * 8];
+	//printf("callback!\n");
 
 //	if (xfer->type == LIBUSB_TRANSFER_TYPE_ISOCHRONOUS) {
 	for (i = 0; i < xfer->num_iso_packets; i++) {
 		struct libusb_iso_packet_descriptor *pack = &xfer->iso_packet_desc[i];
 
 		if (pack->status != LIBUSB_TRANSFER_COMPLETED) {
-//			fprintf(stderr, "transfer status: %d\n", xfer->status);
-//			rtlsdr_cancel_async(dev); /* abort async loop */
+			fprintf(stderr, "transfer status: %d\n", xfer->status);
+			rtlsdr_cancel_async(dev); /* abort async loop */
 		}
 
 		if (pack->actual_length > 0) {
 			iso_packet_buf =  libusb_get_iso_packet_buffer_simple(xfer, i);
 			if (iso_packet_buf) {
-//				len = rtlsdr_convert_samples(dev, iso_packet_buf, outsamples + total_len, pack->actual_length);
-//				total_len += pack->actual_length;//len;
+				/*len = rtlsdr_convert_samples(dev, iso_packet_buf, outsamples + total_len, pack->actual_length);
+				total_len += pack->actual_length;//len;*/
+				printf("actual_length %d\n", pack->actual_length);
+				// start with 3>output_file to write packets there
+				write(3, iso_packet_buf, pack->actual_length);
 			}
 		}
 //		printf("len: %i\n", len);
@@ -2009,7 +2012,7 @@ static void LIBUSB_CALL _libusb_callback(struct libusb_transfer *xfer)
 
 
 //	if (dev->cb)
-//		dev->cb((uint8_t*)outsamples, total_len * sizeof(int16_t), dev->cb_ctx);
+//	dev->cb((uint8_t*)outsamples, total_len * sizeof(int16_t), dev->cb_ctx);
 
 	libusb_submit_transfer(xfer); /* resubmit transfer */
 
