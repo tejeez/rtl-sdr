@@ -117,6 +117,7 @@ struct rtlsdr_dev {
 	uint32_t offs_freq; /* Hz */
 	int corr; /* ppm */
 	int gain; /* tenth dB */
+	int bw;
 	struct e4k_state e4k_s;
 	struct r82xx_config r82xx_c;
 	struct r82xx_priv r82xx_p;
@@ -1047,6 +1048,24 @@ int rtlsdr_get_tuner_gains(rtlsdr_dev_t *dev, int *gains)
 	}
 }
 
+int rtlsdr_set_tuner_bandwidth(rtlsdr_dev_t *dev, uint32_t bw)
+{
+	int r = 0;
+
+	if (!dev || !dev->tuner)
+		return -1;
+
+	if (dev->tuner->set_bw) {
+		rtlsdr_set_i2c_repeater(dev, 1);
+		r = dev->tuner->set_bw(dev, bw > 0 ? bw : dev->rate);
+		rtlsdr_set_i2c_repeater(dev, 0);
+		if (r)
+			return r;
+		dev->bw = bw;
+	}
+	return r;
+}
+
 int rtlsdr_set_tuner_gain(rtlsdr_dev_t *dev, int gain)
 {
 	int r = 0;
@@ -1132,13 +1151,9 @@ int rtlsdr_set_sample_rate(rtlsdr_dev_t *dev, uint32_t samp_rate)
 	if ( ((double)samp_rate) != real_rate )
 		fprintf(stderr, "Exact sample rate is: %f Hz\n", real_rate);
 
-	if (dev->tuner && dev->tuner->set_bw) {
-		rtlsdr_set_i2c_repeater(dev, 1);
-		dev->tuner->set_bw(dev, (int)real_rate);
-		rtlsdr_set_i2c_repeater(dev, 0);
-	}
-
 	dev->rate = (uint32_t)real_rate;
+
+	rtlsdr_set_tuner_bandwidth(dev, dev->bw);
 
 	tmp = (rsamp_ratio >> 16);
 	r |= rtlsdr_demod_write_reg(dev, 1, 0x9f, tmp, 2);
